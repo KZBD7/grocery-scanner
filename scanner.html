@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grocery Scanner</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; text-align: center; }
+    video { width: 100%; max-width: 400px; border-radius: 12px; border: 1px solid #ccc; }
+    #status { margin-top: 15px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>📷 Grocery Scanner</h2>
+  <video id="video" autoplay playsinline></video>
+  <p id="status">📡 Waiting for camera...</p>
+
+  <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+
+    const SUPABASE_URL = 'https://aimwcudinlvvpydidirs.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpbXdjdWRpbmx2dnB5ZGlkaXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1ODMyNTAsImV4cCI6MjA2NTE1OTI1MH0.eATGsYiUAluhkK71GYs1-E6M9MQMH0WjbQd78WW0ZaE';
+
+    async function startCameraAndScanner() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = stream;
+        status.textContent = '📷 Camera is live!';
+
+        Quagga.init({
+          inputStream: {
+            type: "LiveStream",
+            target: video,
+            constraints: {
+              facingMode: "environment"
+            }
+          },
+          decoder: {
+            readers: ["ean_reader", "upc_reader", "code_128_reader"]
+          }
+        }, function (err) {
+          if (err) {
+            console.error(err);
+            status.textContent = "❌ Quagga init failed: " + err.message;
+            return;
+          }
+
+          Quagga.start();
+          status.textContent = "✅ Scanner ready — point at a barcode!";
+
+          Quagga.onDetected((data) => {
+            const code = data.codeResult.code;
+            console.log('✅ Detected:', code);
+            status.textContent = `✅ Scanned: ${code}`;
+
+            // 🔐 Upload to Supabase: inventory_items
+            fetch(`${SUPABASE_URL}/rest/v1/inventory_items`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              },
+              body: JSON.stringify({ barcode: code })
+            });
+
+            // 🔐 Upload to Supabase: personal_food_items
+            fetch(`${SUPABASE_URL}/rest/v1/personal_food_items`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              },
+              body: JSON.stringify({ barcode: code })
+            });
+          });
+        });
+
+      } catch (err) {
+        console.error('Camera error:', err);
+        status.textContent = '🚫 Camera error: ' + err.message;
+      }
+    }
+
+    window.addEventListener('load', startCameraAndScanner);
+  </script>
+</body>
+</html>
