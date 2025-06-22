@@ -14,7 +14,7 @@
   <h2>📷 Grocery Scanner</h2>
   <video id="video" autoplay playsinline></video>
   <p id="status">📡 Waiting for camera...</p>
-
+  <button id="rescan-btn" style="display:none; margin-top: 15px;">🔄 Scan Another</button>
   <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
   <script>
     const video = document.getElementById('video');
@@ -83,9 +83,14 @@
         console.error('Camera error:', err);
         status.textContent = '🚫 Camera error: ' + err.message;
       }
-    }
+    } 
 
-    window.addEventListener('load', startCameraAndScanner);
-  </script>
-</body>
-</html>
+  document.getElementById('rescan-btn').addEventListener('click', () => {
+  document.getElementById('rescan-btn').style.display = 'none';
+  status.textContent = '🔄 Rescanning...';
+  Quagga.start();
+  status.textContent = '✅ Scanner ready — point at a barcode!';
+});
+
+window.addEventListener('load', startCameraAndScanner);
+</script>
